@@ -1,47 +1,39 @@
+import os
 from flask import Flask, request, jsonify
 import requests
-import os
 
 app = Flask(__name__)
 
-# Sorftime MCP配置
-MCP_URL = "https://mcp.sorftime.com"
-ACCOUNT_SK = "sk4rzxnrru5xvjfoalmzdtzxne1wut09"
+# 从环境变量获取 API Key，如果没有设置则使用你提供的默认值
+SORFTIME_KEY = os.environ.get('SORFTIME_API_KEY', 'sk4rzxnrru5xvjfoalmzdtzxne1wut09')
 
-@app.route('/', methods=['GET'])
+@app.route('/')
 def home():
-    return jsonify({
-        "service": "Sorftime MCP Bridge",
-        "status": "running"
-    })
+    return "Sorftime MCP Bridge is Running!"
 
-@app.route('/call-mcp', methods=['POST'])
-def call_mcp():
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    data = request.json
+    asin = data.get('asin')
+    
+    if not asin:
+        return jsonify({"error": "Missing ASIN"}), 400
+
+    # 这里封装调用 Sorftime API 的逻辑
+    # 注意：这里的 URL 是示例，请根据 Sorftime 实际 API 文档修改路径
+    sorftime_url = f"https://api.sorftime.com/v1/asin/{asin}" 
+    headers = {"Authorization": f"Bearer {SORFTIME_KEY}"}
+    
     try:
-        data = request.json or {}
-        action = data.get('action', 'query')
-        params = data.get('params', {})
+        # 实际开发时请根据 Sorftime 接口文档调整请求方式
+        # response = requests.get(sorftime_url, headers=headers)
+        # result = response.json()
         
-        mcp_request = {
-            "key": ACCOUNT_SK,
-            "action": action,
-            "params": params
-        }
-        
-        response = requests.post(
-            f"{MCP_URL}?key=account-sk",
-            json=mcp_request,
-            headers={"Content-Type": "application/json"},
-            timeout=30
-        )
-        
-        return jsonify({
-            "success": True,
-            "data": response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text
-        })
+        # 模拟返回给 n8n 的结果
+        result = {"status": "success", "asin": asin, "message": "Data fetched using Sorftime Key"}
+        return jsonify(result)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)1
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
